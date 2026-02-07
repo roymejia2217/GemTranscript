@@ -8,5 +8,6 @@ env/
 venv/
 logs/
 output/
-video/
 *.log
+files/
+temp_uploads/
