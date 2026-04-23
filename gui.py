@@ -3,6 +3,9 @@ from tkinter import ttk, filedialog, messagebox
 import threading
 import queue
 import shutil
+import subprocess
+import sys
+import os
 import webbrowser
 from pathlib import Path
 
@@ -133,9 +136,24 @@ class GemTranscriptGUI:
 
     def _open_output_folder(self):
         output_dir = Config.OUTPUT_DIR
-        if not output_dir.exists():
-            output_dir.mkdir(parents=True, exist_ok=True)
-        webbrowser.open(f"file://{output_dir.resolve()}")
+        try:
+            if not output_dir.exists():
+                output_dir.mkdir(parents=True, exist_ok=True)
+        except PermissionError as e:
+            messagebox.showerror("Error", f"Cannot create output directory:\n{e}")
+            return
+
+        path_str = str(output_dir.resolve())
+
+        try:
+            if sys.platform == "win32":
+                os.startfile(path_str)
+            elif sys.platform == "darwin":
+                subprocess.Popen(["open", path_str])
+            else:
+                subprocess.Popen(["xdg-open", path_str])
+        except OSError as e:
+            messagebox.showerror("Error", f"Cannot open output folder:\n{e}")
 
 
 def main():

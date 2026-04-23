@@ -356,3 +356,170 @@ class TestProgressEventParsing:
         event = {"type": "complete", "success": 5, "fail": 0, "total": 5}
         progress_percent = (event["success"] + event["fail"]) / event["total"] * 100
         assert progress_percent == 100.0
+
+
+# ===========================================================================
+# 6. Open Output Folder
+# ===========================================================================
+
+class TestOpenOutputFolder:
+    """Test _open_output_folder method for platform-specific folder opening."""
+
+    def _create_gui_instance(self):
+        """Create a GemTranscriptGUI instance with mocked tkinter init methods."""
+        from gui import GemTranscriptGUI
+        with patch.object(GemTranscriptGUI, "_build_ui"), \
+             patch.object(GemTranscriptGUI, "_check_prerequisites"), \
+             patch.object(GemTranscriptGUI, "_poll_queue"):
+            root = MagicMock()
+            gui = GemTranscriptGUI(root)
+        return gui
+
+    def test_linux_opens_with_xdg_open(self):
+        """On Linux, _open_output_folder should call subprocess.Popen with xdg-open."""
+        from config.settings import Config
+        gui = self._create_gui_instance()
+        mock_output_dir = MagicMock()
+        mock_output_dir.exists.return_value = True
+        mock_output_dir.resolve.return_value = Path("/tmp/test_output")
+
+        with patch("sys.platform", "linux"), \
+             patch("subprocess.Popen") as mock_popen, \
+             patch("gui.webbrowser.open"), \
+             patch.object(Config, "OUTPUT_DIR", mock_output_dir):
+            gui._open_output_folder()
+            mock_popen.assert_called_once_with(["xdg-open", "/tmp/test_output"])
+
+    def test_darwin_opens_with_open(self):
+        """On macOS, _open_output_folder should call subprocess.Popen with open."""
+        from config.settings import Config
+        gui = self._create_gui_instance()
+        mock_output_dir = MagicMock()
+        mock_output_dir.exists.return_value = True
+        mock_output_dir.resolve.return_value = Path("/tmp/test_output")
+
+        with patch("sys.platform", "darwin"), \
+             patch("subprocess.Popen") as mock_popen, \
+             patch("gui.webbrowser.open"), \
+             patch.object(Config, "OUTPUT_DIR", mock_output_dir):
+            gui._open_output_folder()
+            mock_popen.assert_called_once_with(["open", "/tmp/test_output"])
+
+    def test_windows_opens_with_startfile(self):
+        """On Windows, _open_output_folder should call os.startfile with path."""
+        from config.settings import Config
+        gui = self._create_gui_instance()
+        mock_output_dir = MagicMock()
+        mock_output_dir.exists.return_value = True
+        mock_output_dir.resolve.return_value = Path("/tmp/test_output")
+
+        with patch("sys.platform", "win32"), \
+             patch("os.startfile", create=True) as mock_startfile, \
+             patch("gui.webbrowser.open"), \
+             patch.object(Config, "OUTPUT_DIR", mock_output_dir):
+            gui._open_output_folder()
+            mock_startfile.assert_called_once_with("/tmp/test_output")
+
+    def test_path_with_spaces_linux(self):
+        """Path with spaces should be passed as single list element to Popen on Linux."""
+        from config.settings import Config
+        gui = self._create_gui_instance()
+        mock_output_dir = MagicMock()
+        mock_output_dir.exists.return_value = True
+        mock_output_dir.resolve.return_value = Path("/tmp/test output")
+
+        with patch("sys.platform", "linux"), \
+             patch("subprocess.Popen") as mock_popen, \
+             patch("gui.webbrowser.open"), \
+             patch.object(Config, "OUTPUT_DIR", mock_output_dir):
+            gui._open_output_folder()
+            call_args = mock_popen.call_args[0][0]
+            assert len(call_args) == 2
+            assert call_args[0] == "xdg-open"
+            assert call_args[1] == "/tmp/test output"
+
+    def test_path_with_spaces_darwin(self):
+        """Path with spaces should be passed as single list element to Popen on macOS."""
+        from config.settings import Config
+        gui = self._create_gui_instance()
+        mock_output_dir = MagicMock()
+        mock_output_dir.exists.return_value = True
+        mock_output_dir.resolve.return_value = Path("/tmp/test output")
+
+        with patch("sys.platform", "darwin"), \
+             patch("subprocess.Popen") as mock_popen, \
+             patch("gui.webbrowser.open"), \
+             patch.object(Config, "OUTPUT_DIR", mock_output_dir):
+            gui._open_output_folder()
+            call_args = mock_popen.call_args[0][0]
+            assert len(call_args) == 2
+            assert call_args[0] == "open"
+            assert call_args[1] == "/tmp/test output"
+
+    def test_creates_directory_if_missing(self):
+        """_open_output_folder should create the directory if it doesn't exist."""
+        from config.settings import Config
+        gui = self._create_gui_instance()
+        mock_output_dir = MagicMock()
+        mock_output_dir.exists.return_value = False
+        mock_output_dir.resolve.return_value = Path("/tmp/test_output")
+
+        with patch("sys.platform", "linux"), \
+             patch("subprocess.Popen") as mock_popen, \
+             patch("gui.webbrowser.open"), \
+             patch.object(Config, "OUTPUT_DIR", mock_output_dir):
+            gui._open_output_folder()
+            mock_output_dir.mkdir.assert_called_once_with(parents=True, exist_ok=True)
+
+    def test_mkdir_permission_error_shows_dialog(self):
+        """_open_output_folder should show error dialog when mkdir raises PermissionError."""
+        from config.settings import Config
+        gui = self._create_gui_instance()
+        mock_output_dir = MagicMock()
+        mock_output_dir.exists.return_value = False
+        mock_output_dir.mkdir.side_effect = PermissionError("Permission denied")
+        mock_output_dir.resolve.return_value = Path("/tmp/test_output")
+
+        with patch("sys.platform", "linux"), \
+             patch("subprocess.Popen") as mock_popen, \
+             patch("gui.webbrowser.open"), \
+             patch("gui.messagebox.showerror") as mock_showerror, \
+             patch.object(Config, "OUTPUT_DIR", mock_output_dir):
+            gui._open_output_folder()
+            mock_showerror.assert_called_once()
+            assert "Cannot create output directory" in mock_showerror.call_args[0][1]
+            mock_popen.assert_not_called()
+
+    def test_xdg_open_oserror_shows_dialog(self):
+        """_open_output_folder should show error dialog when xdg-open raises OSError."""
+        from config.settings import Config
+        gui = self._create_gui_instance()
+        mock_output_dir = MagicMock()
+        mock_output_dir.exists.return_value = True
+        mock_output_dir.resolve.return_value = Path("/tmp/test_output")
+
+        with patch("sys.platform", "linux"), \
+             patch("subprocess.Popen", side_effect=OSError("xdg-open failed")), \
+             patch("gui.webbrowser.open"), \
+             patch("gui.messagebox.showerror") as mock_showerror, \
+             patch.object(Config, "OUTPUT_DIR", mock_output_dir):
+            gui._open_output_folder()
+            mock_showerror.assert_called_once()
+            assert "Cannot open output folder" in mock_showerror.call_args[0][1]
+
+    def test_startfile_oserror_shows_dialog(self):
+        """_open_output_folder should show error dialog when os.startfile raises OSError."""
+        from config.settings import Config
+        gui = self._create_gui_instance()
+        mock_output_dir = MagicMock()
+        mock_output_dir.exists.return_value = True
+        mock_output_dir.resolve.return_value = Path("/tmp/test_output")
+
+        with patch("sys.platform", "win32"), \
+             patch("os.startfile", create=True, side_effect=OSError("startfile failed")), \
+             patch("gui.webbrowser.open"), \
+             patch("gui.messagebox.showerror") as mock_showerror, \
+             patch.object(Config, "OUTPUT_DIR", mock_output_dir):
+            gui._open_output_folder()
+            mock_showerror.assert_called_once()
+            assert "Cannot open output folder" in mock_showerror.call_args[0][1]
