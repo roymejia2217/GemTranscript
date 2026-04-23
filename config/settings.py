@@ -6,8 +6,8 @@ load_dotenv()
 
 class Config:
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-    # Modelo Gemini 3.0 Flash: optimizado para velocidad y bajo costo
-    MODEL_NAME = "gemini-3.0-flash"
+    # Modelo Gemini Flash: se resuelve dinamicamente si no se especifica
+    GEMINI_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME")
     
     # Rutas base del proyecto
     BASE_DIR = Path(__file__).parent.parent

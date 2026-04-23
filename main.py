@@ -7,6 +7,7 @@ sys.path.append(str(Path(__file__).parent))
 
 from config.settings import Config
 from src.transcriber import MediaTranscriber
+from src.model_resolver import resolve_model, ModelResolutionError
 
 def setup_logging():
     try:
@@ -31,16 +32,25 @@ def main():
     try:
         # Validacion de configuracion (crea directorios necesarios)
         Config.validate()
-        
+
+        try:
+            resolved_model = resolve_model(Config.GEMINI_API_KEY, Config.GEMINI_MODEL_NAME)
+            logger = logging.getLogger(__name__)
+            logger.info(f"Model resolved: {resolved_model}")
+        except ModelResolutionError as e:
+            logger = logging.getLogger(__name__)
+            logger.error(str(e))
+            sys.exit(1)
+
         # Inicializacion de logging
         setup_logging()
-        
+
         logger = logging.getLogger(__name__)
         logger.info("GemTranscript")
-        logger.info(f"Modelo configurado: {Config.MODEL_NAME}")
+        logger.info(f"Modelo configurado: {resolved_model}")
 
         # Ejecucion principal
-        transcriber = MediaTranscriber()
+        transcriber = MediaTranscriber(resolved_model)
         transcriber.process_all_files()
 
         logger.info("--- PROCESO COMPLETADO EXITOSAMENTE ---")
