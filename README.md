@@ -15,7 +15,7 @@
     <img src="https://img.shields.io/badge/Retry-Tenacity-green?style=flat" alt="Tenacity" />
   </a>
   <a href="https://ai.google.dev/">
-    <img src="https://img.shields.io/badge/Model-Gemini_3.0_Flash-blueviolet?style=flat" alt="Gemini 3.0 Flash" />
+    <img src="https://img.shields.io/badge/Model-Gemini_Flash-blueviolet?style=flat" alt="Gemini Flash" />
   </a>
   <a href="https://ffmpeg.org/">
     <img src="https://img.shields.io/badge/Dependency-FFmpeg-green?style=flat" alt="FFmpeg" />
@@ -26,12 +26,12 @@
 </p>
 
 <p align="center">
-  High-performance CLI for batch transcription of audio and video files using Google Gemini 3.0 Flash, optimized for low bandwidth consumption and deterministic output
+  Herramienta de alto rendimiento para transcripcion por lotes de archivos de audio y video usando Google Gemini Flash, con interfaz grafica y CLI, optimizada para bajo consumo de ancho de banda y salida determinista
 </p>
 
 ---
 
-## Quick Start
+## Inicio Rapido
 
 ```bash
 git clone https://github.com/roymejia2217/GemTranscript.git
@@ -42,85 +42,250 @@ source venv/bin/activate    # Linux/macOS
 pip install -r requirements.txt
 ```
 
-Create a `.env` file in the project root:
+Crea un archivo `.env` en la raiz del proyecto:
 
 ```env
-GEMINI_API_KEY=your_api_key_here
+GEMINI_API_KEY=tu_clave_api_aqui
 ```
+
+Ejecuta con CLI o GUI:
+
+```bash
+python main.py        # Modo CLI
+python gui.py         # Modo GUI
+```
+
+---
+
+## Caracteristicas
+
+| Caracteristica | Descripcion |
+|----------------|-------------|
+| **Motor Gemini Flash** | Soporta una amplia ventana de contexto para procesar archivos de multiples horas en una sola pasada |
+| **Interfaz Grafica (GUI)** | Aplicacion tkinter con seleccion de archivos, barra de progreso, conteo de exitos/fallos y apertura directa de la carpeta de salida |
+| **Resolucion Dinamica de Modelos** | Descubre automaticamente modelos Flash disponibles via API, con cadena de respaldo inteligente |
+| **Optimizacion de Ancho de Banda** | Extrae audio de video a MP3 mono a 32kbps antes de subir, reduciendo el tamano de transferencia aproximadamente 95% |
+| **Soporte Multi-Formato** | Maneja transparentemente MP4, MOV, MKV, MP3, WAV, M4A, FLAC, OGG, AVI, WEBM, FLV y 3GP |
+| **Procesamiento Paralelo** | Thread pool configurable (default 3 workers) para transcripcion concurrente de archivos |
+| **Ejecucion Idempotente** | Omite archivos que ya tienen una transcripcion correspondiente, permitiendo re-ejecuciones seguras |
+| **Manejo de Nombres Unicode** | Sana rutas de archivos y usa hardlinks para trabajar con restricciones de caracteres no-ASCII en la API de Google |
+| **Salida Deterministica** | Temperatura fija en 0 para transcripcion textual sin alucinaciones ni metadatos conversacionales |
+| **Limpieza Automatica** | Elimina archivos temporales locales y uploads remotos de la API de Google File despues de cada transcripcion |
+| **Reintento con Backoff** | Backoff exponencial para fallos transitorios de API, con conteo de reintentos configurable y limites de espera |
+| **Seguimiento de Progreso** | Callback de progreso con eventos para inicio, archivo actual, archivo completado y finalizacion |
+
+---
+
+## Requisitos Previos
+
+| Dependencia | Proposito | Instalacion |
+|-------------|-----------|-------------|
+| **Python** 3.10+ | Entorno de ejecucion | [python.org](https://www.python.org/) |
+| **FFmpeg** | Extraccion de audio y deteccion de duracion de medios | `sudo apt install ffmpeg` (Linux), `brew install ffmpeg` (macOS), [ffmpeg.org](https://ffmpeg.org/) (Windows) |
+| **FFprobe** | Obtencion de metadatos de medios | Incluido con FFmpeg |
+| **Clave API de Google Gemini** | Autenticacion para la API de Gemini | [aistudio.google.com](https://aistudio.google.com/) |
+| **GEMINI_MODEL_NAME** (opcional) | Override del modelo Flash automatico | Ver seccion Configuracion de Modelo |
+
+---
+
+## Instalacion
+
+### Instalacion basica
+
+```bash
+pip install -r requirements.txt
+```
+
+### Instalacion con entry points (acceso global)
+
+```bash
+pip install -e .
+```
+
+Esto habilita los comandos:
+
+```bash
+gemtranscript       # CLI
+gemtranscript-gui   # GUI
+```
+
+---
+
+## Uso
+
+### Modo CLI
+
+1. Coloca archivos de audio o video en el directorio `files/`.
+2. Ejecuta la aplicacion:
 
 ```bash
 python main.py
 ```
 
----
+3. Las transcripciones se guardan como archivos `.txt` en el directorio `output/`, nombrados `{nombre_original}_transcription.txt`.
 
-## Features
+Los archivos que ya tienen una transcripcion correspondiente se omiten automaticamente.
 
-| Feature | Description |
-|---------|-------------|
-| **Gemini 3.0 Flash Engine** | Leverages the 1M-token context window to process files up to 8 hours in a single pass |
-| **Bandwidth Optimization** | Extracts audio from video to mono MP3 at 32kbps before upload, reducing transfer size by approximately 95% |
-| **Multi-Format Support** | Handles MP4, MOV, MKV, MP3, WAV, M4A, FLAC, OGG, AVI, WEBM, FLV, and 3GP transparently |
-| **Parallel Processing** | Configurable thread pool (default 3 workers) for concurrent file transcription |
-| **Idempotent Execution** | Skips files that already have a corresponding transcription output, enabling safe re-runs |
-| **Unicode Filename Handling** | Sanitizes file paths and uses hardlinks or copies to work around non-ASCII restrictions in the Google API |
-| **Deterministic Output** | Temperature set to 0 ensures verbatim transcription without hallucinations or conversational metadata |
-| **Automatic Cleanup** | Removes temporary local files and remote uploads from the Google File API after each transcription |
-| **Retry with Backoff** | Exponential backoff for transient API failures, with configurable retry count and wait limits |
+### Modo GUI
 
----
-
-## Prerequisites
-
-| Dependency | Purpose | Installation |
-|------------|---------|--------------|
-| **Python** 3.10+ | Runtime environment | [python.org](https://www.python.org/) |
-| **FFmpeg** | Audio extraction and media duration detection | `sudo apt install ffmpeg` (Linux), `brew install ffmpeg` (macOS), [ffmpeg.org](https://ffmpeg.org/) (Windows) |
-| **FFprobe** | Media metadata retrieval | Included with FFmpeg |
-| **Google Gemini API Key** | Authentication for the Gemini API | [aistudio.google.com](https://aistudio.google.com/) |
-
----
-
-## Usage
-
-1. Place audio or video files in the `files/` directory.
-2. Run the application:
+1. Ejecuta la aplicacion grafica:
 
 ```bash
-python main.py
+python gui.py
+# o si instalaste con entry points:
+gemtranscript-gui
 ```
 
-3. Transcriptions are saved as `.txt` files in the `output/` directory, named `{original_name}_transcription.txt`.
+2. Selecciona archivos usando el dialogo de seleccion multiple.
+3. Haz clic en "Transcribe" para iniciar el procesamiento.
+4. La barra de progreso muestra el estado actual.
+5. Al completar, haz clic en "Open Output Folder" para ver los resultados.
 
-Files that already have a corresponding transcription are skipped automatically.
+La GUI valida al inicio:
+- Que `GEMINI_API_KEY` este configurada.
+- Que `ffprobe` este disponible.
+- Que el modelo Gemini pueda ser resuelto.
 
 ---
 
-## Project Structure
+## Configuracion
+
+El archivo `.env` en la raiz del proyecto controla las opciones de configuracion:
+
+| Variable | Requerido | Descripcion |
+|----------|-----------|-------------|
+| `GEMINI_API_KEY` | Si | Clave API de Google Gemini. Obtenla en [aistudio.google.com](https://aistudio.google.com/) |
+| `GEMINI_MODEL_NAME` | No | Override del nombre del modelo. Si no se especifica, se descubre automaticamente |
+
+Ejemplo de `.env` completo:
+
+```env
+GEMINI_API_KEY=tu_clave_api_aqui
+GEMINI_MODEL_NAME=gemini-2.0-flash
+```
+
+---
+
+## Configuracion de Modelo
+
+GemTranscript resuelve automaticamente el mejor modelo Flash de Gemini disponible.
+
+### Como funciona
+
+1. Si `GEMINI_MODEL_NAME` esta definido en `.env`, se valida que el modelo exista.
+2. Si no hay override, se realiza descubrimiento dinamico via `client.models.list()`.
+3. Si el descubrimiento falla, se usa la cadena de respaldo:
+
+```
+gemini-2.5-flash -> gemini-2.0-flash -> gemini-2.0-flash-001 -> gemini-1.5-flash
+```
+
+4. El resultado se guarda en cache en memoria para evitar llamadas API repetidas.
+
+### Override manual
+
+Para forzar un modelo especifico, agrega en `.env`:
+
+```env
+GEMINI_MODEL_NAME=gemini-2.0-flash
+```
+
+### Si no se encuentra ningun modelo
+
+Si la resolucion falla completamente, mostrara un error claro indicando:
+
+- Que no se pudo encontrar un modelo valido
+- Que modelos se intentaron
+- Recomendaciones para verificar: clave API, conexion de red, o configuracion manual via `.env`
+
+---
+
+## Compilacion de Ejecutable
+
+Para crear ejecutables standalone en Linux:
+
+```bash
+./build.sh
+```
+
+Esto:
+
+1. Crea un entorno virtual limpio `build_venv`.
+2. Instala las dependencias y PyInstaller.
+3. Compila dos ejecutables: `gemtranscript` (CLI) y `gemtranscript-gui` (GUI).
+4. Los ejecutables se generan en `dist/`.
+
+Requisitos para compilacion:
+
+- Python 3.10+
+- PyInstaller (instalado automaticamente por el script)
+- Linux (el script usa comandos Bash)
+
+---
+
+## Pruebas
+
+El proyecto incluye un conjunto de pruebas con pytest:
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Las pruebas cubren:
+
+- Callbacks del transcriber (eventos de progreso)
+- Logica de la interfaz grafica
+- Resolucion de modelos y manejo de errores
+
+---
+
+## Estructura del Proyecto
 
 ```
 config/
-└── settings.py             # Global configuration (model, paths, limits, concurrency)
+└── settings.py             # Configuracion global (modelo, rutas, limites, concurrencia)
 src/
-├── gemini_client.py        # Gemini API client (upload, poll, transcribe, delete, retry)
-├── media_processor.py      # FFmpeg operations, media detection, segment calculation
-├── transcriber.py          # Orchestrator (batch processing, thread pool, idempotency)
-└── utils.py                # Filename sanitization for API compatibility
-main.py                     # Entry point (config validation, logging, execution)
-requirements.txt            # Python dependencies
+├── gemini_client.py        # Cliente de API Gemini (upload, poll, transcribe, delete, retry)
+├── media_processor.py      # Operaciones FFmpeg, deteccion de medios, calculo de segmentos
+├── model_resolver.py      # Resolucion dinamica de modelos Flash via API
+├── transcriber.py          # Orquestador (procesamiento por lotes, thread pool, idempotencia)
+└── utils.py                # Saneamiento de nombres de archivo para compatibilidad con API
+gui.py                      # Punto de entrada GUI (tkinter)
+main.py                     # Punto de entrada CLI (validacion, logging, ejecucion)
+pyproject.toml              # Configuracion de paquete con entry points
+build.sh                    # Script de compilacion para ejecutables Linux
+requirements.txt            # Dependencias de produccion
+requirements-dev.txt        # Dependencias de desarrollo (pytest)
+tests/
+├── __init__.py
+├── test_transcriber_callbacks.py  # Pruebas de callbacks de progreso
+├── test_gui_logic.py             # Pruebas de logica GUI
+└── test_model_resolver.py        # Pruebas de resolucion de modelos
 ```
 
-Runtime directories (created automatically):
+Directorios de ejecucion (creados automaticamente):
 
 ```
-files/          # Input media files
-output/         # Transcription output (.txt)
-logs/           # Execution logs and temporary audio extractions
-temp_uploads/   # Temporary hardlinks for Unicode filename workaround
+files/          # Archivos de medios de entrada
+output/         # Archivos de transcripcion (.txt)
+logs/           # Logs de ejecucion y extracciones de audio temporales
+temp_uploads/   # Hardlinks temporales para nombres Unicode
 ```
 
 ---
 
-## License
+## Creditos
 
-MIT License. See [LICENSE](LICENSE) for details.
+| Proyecto | Descripcion | Licencia |
+|----------|-------------|----------|
+| [google-genai](https://pypi.org/project/google-genai/) | SDK oficial de Google para Gemini | Apache 2.0 |
+| [python-dotenv](https://pypi.org/project/python-dotenv/) | Carga de variables de entorno | BSD |
+| [tenacity](https://pypi.org/project/tenacity/) | Reintento automatico con backoff | Apache 2.0 |
+| [pytest](https://pypi.org/project/pytest/) | Framework de pruebas | MIT |
+
+---
+
+## Licencia
+
+MIT License. Ver [LICENSE](LICENSE) para detalles.
