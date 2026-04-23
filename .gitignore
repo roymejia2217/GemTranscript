@@ -11,3 +11,7 @@ output/
 *.log
 files/
 temp_uploads/
+.pytest_cache/
+dist/
+build/
+*.spec
